@@ -1,40 +1,727 @@
-const songs = [
-  {
-    title: "Chinmoku no Majo",
-    artist: "Yoshihisa Kato",
-    src: "lagu/song1.mp3",
-    cover: "gambar/song1.jpg"
-  },
-  {
-    title: "Mizlecca",
-    artist: "Hagali",
-    src: "lagu/song2.mp3",
-    cover: "gambar/song2.jpeg"
-  },
-  {
-    title: "Fig Luudhran",
-    artist: "Hagali",
-    src: "lagu/song3.mp3",
-    cover: "gambar/song3.jpg"
-  },
-  {
-    title: "Ebari and The Forest",
-    artist: "Hagali",
-    src: "lagu/song4.mp3",
-    cover: "gambar/song4.jpg"
-  },
-];
+// Configuration
+const CONFIG = {
+    songs: [
+        {
+            title: "Chinmoku no Majo",
+            artist: "Yoshihisa Kato",
+            src: "lagu/song1.mp3",
+            cover: "gambar/song1.jpg",
+            duration: "3:45"
+        },
+        {
+            title: "Mizlecca",
+            artist: "Hagali",
+            src: "lagu/song2.mp3",
+            cover: "gambar/song2.jpeg",
+            duration: "4:20"
+        },
+        {
+            title: "Fig Luudhran",
+            artist: "Hagali",
+            src: "lagu/song3.mp3",
+            cover: "gambar/song3.jpg",
+            duration: "3:55"
+        },
+        {
+            title: "Ebari and The Forest",
+            artist: "Hagali",
+            src: "lagu/song4.mp3",
+            cover: "gambar/song4.jpg",
+            duration: "4:10"
+        }
+    ],
+    defaultVolume: 0.8,
+    crossfadeDuration: 0,
+    audioQuality: 'medium'
+};
 
-let currentSongIndex = 0;
-let isAudioEnabled = false;
-let repeatMode = 'off'; // 'off', 'all', 'one'
-let autoplayEnabled = true;
+// State Management
+let state = {
+    currentSongIndex: 0,
+    isPlaying: false,
+    repeatMode: 'off', // 'off', 'all', 'one'
+    shuffleMode: false,
+    autoplay: true,
+    volume: CONFIG.defaultVolume,
+    isAudioEnabled: false,
+    deferredPrompt: null,
+    visualizerAnimation: null
+};
 
 // DOM Elements
-const audio = document.getElementById('audio');
-const playBtn = document.getElementById('play');
-const nextBtn = document.getElementById('next');
-const prevBtn = document.getElementById('prev');
+const elements = {
+    audio: document.getElementById('audio'),
+    playBtn: document.getElementById('play-btn'),
+    prevBtn: document.getElementById('prev-btn'),
+    nextBtn: document.getElementById('next-btn'),
+    repeatBtn: document.getElementById('repeat-btn'),
+    shuffleBtn: document.getElementById('shuffle-btn'),
+    autoplayBtn: document.getElementById('autoplay-btn'),
+    progress: document.getElementById('progress'),
+    volume: document.getElementById('volume'),
+    title: document.getElementById('title'),
+    artist: document.getElementById('artist'),
+    cover: document.getElementById('cover'),
+    currentTime: document.getElementById('current-time'),
+    duration: document.getElementById('duration'),
+    playlist: document.getElementById('playlist'),
+    songCount: document.getElementById('song-count'),
+    themeToggle: document.getElementById('theme-toggle'),
+    settingsBtn: document.getElementById('settings-btn'),
+    settingsPanel: document.getElementById('settings-panel'),
+    closeSettings: document.getElementById('close-settings'),
+    loading: document.getElementById('loading'),
+    mainContent: document.getElementById('main-content'),
+    visualizer: document.getElementById('visualizer'),
+    toast: document.getElementById('toast'),
+    installPrompt: document.getElementById('install-prompt'),
+    installBtn: document.getElementById('install-btn'),
+    installClose: document.getElementById('install-close')
+};
+
+// Initialize Application
+function initApp() {
+    // Set initial volume
+    elements.audio.volume = state.volume;
+    elements.volume.value = state.volume * 100;
+    
+    // Load first song
+    loadSong(state.currentSongIndex);
+    
+    // Render playlist
+    renderPlaylist();
+    
+    // Update UI
+    updateUI();
+    
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Setup service worker for PWA
+    setupServiceWorker();
+    
+    // Check for install prompt
+    setupInstallPrompt();
+    
+    // Auto-hide loading screen
+    setTimeout(() => {
+        elements.loading.style.opacity = '0';
+        setTimeout(() => {
+            elements.loading.style.display = 'none';
+            elements.mainContent.style.display = 'block';
+            showToast('Music Player Ready! 🎵');
+        }, 500);
+    }, 1500);
+}
+
+// Setup Event Listeners
+function setupEventListeners() {
+    // Player controls
+    elements.playBtn.addEventListener('click', togglePlay);
+    elements.prevBtn.addEventListener('click', prevSong);
+    elements.nextBtn.addEventListener('click', nextSong);
+    
+    // Mode controls
+    elements.repeatBtn.addEventListener('click', toggleRepeat);
+    elements.shuffleBtn.addEventListener('click', toggleShuffle);
+    elements.autoplayBtn.addEventListener('click', toggleAutoplay);
+    
+    // Progress and volume
+    elements.progress.addEventListener('input', seekTo);
+    elements.volume.addEventListener('input', updateVolume);
+    
+    // Audio events
+    elements.audio.addEventListener('timeupdate', updateProgress);
+    elements.audio.addEventListener('loadedmetadata', updateDuration);
+    elements.audio.addEventListener('ended', handleSongEnd);
+    elements.audio.addEventListener('play', () => {
+        state.isPlaying = true;
+        updateUI();
+        startVisualizer();
+    });
+    elements.audio.addEventListener('pause', () => {
+        state.isPlaying = false;
+        updateUI();
+        stopVisualizer();
+    });
+    
+    // Theme toggle
+    elements.themeToggle.addEventListener('click', toggleTheme);
+    
+    // Settings
+    elements.settingsBtn.addEventListener('click', () => {
+        elements.settingsPanel.classList.add('active');
+    });
+    
+    elements.closeSettings.addEventListener('click', () => {
+        elements.settingsPanel.classList.remove('active');
+    });
+    
+    // Bottom navigation
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            const target = this.dataset.target;
+            // Handle navigation (simplified for demo)
+            if (target === 'player') {
+                // Scroll to player section
+                document.querySelector('.now-playing').scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+    
+    // Touch gestures
+    setupTouchGestures();
+    
+    // Page visibility
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
+// Load Song
+function loadSong(index) {
+    if (index < 0) index = CONFIG.songs.length - 1;
+    if (index >= CONFIG.songs.length) index = 0;
+    
+    state.currentSongIndex = index;
+    const song = CONFIG.songs[index];
+    
+    // Update audio source with cache-busting for mobile
+    elements.audio.src = `${song.src}?t=${Date.now()}`;
+    
+    // Update UI
+    elements.title.textContent = song.title;
+    elements.artist.textContent = song.artist;
+    elements.cover.src = song.cover;
+    
+    // Update active playlist item
+    updateActivePlaylistItem();
+    
+    // Update visualizer
+    updateVisualizer();
+    
+    // Auto-play if enabled and was playing
+    if (state.autoplay && state.isPlaying) {
+        setTimeout(() => {
+            playSong().catch(console.error);
+        }, 300);
+    }
+}
+
+// Play/Pause
+async function togglePlay() {
+    try {
+        if (!state.isAudioEnabled) {
+            await enableAudio();
+        }
+        
+        if (elements.audio.paused) {
+            await playSong();
+        } else {
+            elements.audio.pause();
+        }
+    } catch (error) {
+        console.error('Play error:', error);
+        showToast('Click again to play music');
+    }
+}
+
+// Play Song with mobile compatibility
+async function playSong() {
+    try {
+        await elements.audio.play();
+        state.isPlaying = true;
+        updateUI();
+        showToast('Now Playing 🎶');
+    } catch (error) {
+        // Handle autoplay restrictions
+        if (error.name === 'NotAllowedError') {
+            showToast('Tap to play music');
+            state.isAudioEnabled = false;
+        }
+        throw error;
+    }
+}
+
+// Next Song
+function nextSong() {
+    let nextIndex;
+    
+    if (state.shuffleMode) {
+        do {
+            nextIndex = Math.floor(Math.random() * CONFIG.songs.length);
+        } while (nextIndex === state.currentSongIndex && CONFIG.songs.length > 1);
+    } else {
+        nextIndex = state.currentSongIndex + 1;
+    }
+    
+    loadSong(nextIndex);
+    
+    if (state.autoplay) {
+        setTimeout(() => playSong(), 100);
+    }
+}
+
+// Previous Song
+function prevSong() {
+    let prevIndex = state.currentSongIndex - 1;
+    
+    // If less than 3 seconds played, go to previous song, otherwise restart current
+    if (elements.audio.currentTime > 3) {
+        elements.audio.currentTime = 0;
+        return;
+    }
+    
+    loadSong(prevIndex);
+    
+    if (state.autoplay) {
+        setTimeout(() => playSong(), 100);
+    }
+}
+
+// Toggle Repeat Mode
+function toggleRepeat() {
+    const modes = ['off', 'all', 'one'];
+    const currentIndex = modes.indexOf(state.repeatMode);
+    state.repeatMode = modes[(currentIndex + 1) % modes.length];
+    updateUI();
+    showToast(`Repeat: ${state.repeatMode}`);
+}
+
+// Toggle Shuffle
+function toggleShuffle() {
+    state.shuffleMode = !state.shuffleMode;
+    updateUI();
+    showToast(`Shuffle: ${state.shuffleMode ? 'On' : 'Off'}`);
+}
+
+// Toggle Autoplay
+function toggleAutoplay() {
+    state.autoplay = !state.autoplay;
+    updateUI();
+    showToast(`Auto-play: ${state.autoplay ? 'On' : 'Off'}`);
+}
+
+// Update Progress Bar
+function updateProgress() {
+    if (!elements.audio.duration || isNaN(elements.audio.duration)) return;
+    
+    const progress = (elements.audio.currentTime / elements.audio.duration) * 100;
+    elements.progress.value = progress;
+    elements.currentTime.textContent = formatTime(elements.audio.currentTime);
+    
+    // Update CSS custom property for progress bar background
+    document.documentElement.style.setProperty('--progress', `${progress}%`);
+}
+
+// Seek to Position
+function seekTo() {
+    if (!elements.audio.duration || isNaN(elements.audio.duration)) return;
+    
+    const time = (elements.progress.value / 100) * elements.audio.duration;
+    elements.audio.currentTime = time;
+}
+
+// Update Volume
+function updateVolume() {
+    state.volume = elements.volume.value / 100;
+    elements.audio.volume = state.volume;
+    localStorage.setItem('volume', state.volume);
+}
+
+// Update Duration Display
+function updateDuration() {
+    if (!elements.audio.duration || isNaN(elements.audio.duration)) return;
+    
+    elements.duration.textContent = formatTime(elements.audio.duration);
+    
+    // Update playlist item duration
+    const playlistItems = document.querySelectorAll('.playlist-item');
+    if (playlistItems[state.currentSongIndex]) {
+        const durationSpan = playlistItems[state.currentSongIndex].querySelector('.playlist-duration');
+        if (durationSpan) {
+            durationSpan.textContent = formatTime(elements.audio.duration);
+        }
+    }
+}
+
+// Handle Song End
+function handleSongEnd() {
+    if (state.repeatMode === 'one') {
+        elements.audio.currentTime = 0;
+        playSong();
+    } else if (state.repeatMode === 'all' || state.autoplay) {
+        nextSong();
+    } else {
+        state.isPlaying = false;
+        updateUI();
+    }
+}
+
+// Enable Audio (for mobile restrictions)
+async function enableAudio() {
+    try {
+        // iOS/Android workaround
+        elements.audio.volume = 0.01;
+        await elements.audio.play();
+        await elements.audio.pause();
+        elements.audio.currentTime = 0;
+        elements.audio.volume = state.volume;
+        state.isAudioEnabled = true;
+        
+        // Store in localStorage
+        localStorage.setItem('audioEnabled', 'true');
+    } catch (error) {
+        console.log('Audio enable failed:', error);
+    }
+}
+
+// Render Playlist
+function renderPlaylist() {
+    elements.playlist.innerHTML = '';
+    elements.songCount.textContent = `${CONFIG.songs.length} songs`;
+    
+    CONFIG.songs.forEach((song, index) => {
+        const item = document.createElement('div');
+        item.className = `playlist-item ${index === state.currentSongIndex ? 'active' : ''}`;
+        item.innerHTML = `
+            <img src="${song.cover}" alt="${song.title}" crossorigin="anonymous">
+            <div class="playlist-info">
+                <div class="playlist-title">${song.title}</div>
+                <div class="playlist-artist">${song.artist}</div>
+            </div>
+            <div class="playlist-duration">${song.duration}</div>
+        `;
+        
+        item.addEventListener('click', () => {
+            loadSong(index);
+            if (state.autoplay) {
+                playSong();
+            }
+            showToast(`Playing: ${song.title}`);
+        });
+        
+        elements.playlist.appendChild(item);
+    });
+}
+
+// Update Active Playlist Item
+function updateActivePlaylistItem() {
+    document.querySelectorAll('.playlist-item').forEach((item, index) => {
+        item.classList.toggle('active', index === state.currentSongIndex);
+    });
+}
+
+// Update UI
+function updateUI() {
+    // Update play button
+    elements.playBtn.innerHTML = `<i class="fas fa-${state.isPlaying ? 'pause' : 'play'}"></i>`;
+    
+    // Update mode buttons
+    elements.repeatBtn.classList.toggle('active', state.repeatMode !== 'off');
+    elements.repeatBtn.querySelector('.mode-text').textContent = state.repeatMode;
+    
+    elements.shuffleBtn.classList.toggle('active', state.shuffleMode);
+    elements.shuffleBtn.querySelector('.mode-text').textContent = state.shuffleMode ? 'On' : 'Off';
+    
+    elements.autoplayBtn.classList.toggle('active', state.autoplay);
+    elements.autoplayBtn.querySelector('.mode-text').textContent = state.autoplay ? 'On' : 'Off';
+    
+    // Update album art animation
+    const albumArt = document.querySelector('.album-art');
+    if (state.isPlaying) {
+        albumArt.style.animationPlayState = 'running';
+    } else {
+        albumArt.style.animationPlayState = 'paused';
+    }
+}
+
+// Toggle Theme
+function toggleTheme() {
+    const currentTheme = document.body.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    document.body.setAttribute('data-theme', newTheme);
+    elements.themeToggle.innerHTML = `<i class="fas fa-${newTheme === 'light' ? 'sun' : 'moon'}"></i>`;
+    
+    localStorage.setItem('theme', newTheme);
+    showToast(`${newTheme === 'light' ? 'Light' : 'Dark'} theme enabled`);
+}
+
+// Format Time
+function formatTime(seconds) {
+    if (isNaN(seconds)) return '0:00';
+    
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Show Toast Notification
+function showToast(message) {
+    elements.toast.textContent = message;
+    elements.toast.classList.add('show');
+    
+    setTimeout(() => {
+        elements.toast.classList.remove('show');
+    }, 3000);
+}
+
+// Visualizer Animation
+function startVisualizer() {
+    if (state.visualizerAnimation) return;
+    
+    const bars = elements.visualizer.querySelectorAll('.bar');
+    let frame = 0;
+    
+    function animate() {
+        bars.forEach((bar, i) => {
+            const scale = 0.5 + Math.abs(Math.sin(frame * 0.1 + i * 0.5));
+            bar.style.transform = `scaleY(${scale})`;
+        });
+        
+        frame++;
+        state.visualizerAnimation = requestAnimationFrame(animate);
+    }
+    
+    animate();
+}
+
+function stopVisualizer() {
+    if (state.visualizerAnimation) {
+        cancelAnimationFrame(state.visualizerAnimation);
+        state.visualizerAnimation = null;
+    }
+    
+    const bars = elements.visualizer.querySelectorAll('.bar');
+    bars.forEach(bar => {
+        bar.style.transform = 'scaleY(0.5)';
+    });
+}
+
+function updateVisualizer() {
+    // Visualizer color based on album art (simplified)
+    const hue = Math.random() * 360;
+    elements.visualizer.querySelectorAll('.bar').forEach(bar => {
+        bar.style.background = `hsl(${hue}, 70%, 60%)`;
+    });
+}
+
+// Keyboard Shortcuts
+function handleKeyboardShortcuts(e) {
+    // Don't trigger if user is typing in an input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    switch(e.key.toLowerCase()) {
+        case ' ':
+            e.preventDefault();
+            togglePlay();
+            break;
+        case 'arrowright':
+            e.preventDefault();
+            nextSong();
+            break;
+        case 'arrowleft':
+            e.preventDefault();
+            prevSong();
+            break;
+        case 'r':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                toggleRepeat();
+            }
+            break;
+        case 's':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                toggleShuffle();
+            }
+            break;
+        case 'a':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                toggleAutoplay();
+            }
+            break;
+        case 'm':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                elements.audio.muted = !elements.audio.muted;
+                showToast(`Mute: ${elements.audio.muted ? 'On' : 'Off'}`);
+            }
+            break;
+    }
+}
+
+// Touch Gestures
+function setupTouchGestures() {
+    let startX, startY;
+    let isHorizontal = false;
+    
+    document.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isHorizontal = false;
+    }, { passive: true });
+    
+    document.addEventListener('touchmove', (e) => {
+        if (!startX || !startY || isHorizontal) return;
+        
+        const deltaX = e.touches[0].clientX - startX;
+        const deltaY = e.touches[0].clientY - startY;
+        
+        // Determine if horizontal swipe
+        if (Math.abs(deltaX) > Math.abs(deltaY) * 2) {
+            isHorizontal = true;
+            e.preventDefault();
+        }
+    }, { passive: false });
+    
+    document.addEventListener('touchend', (e) => {
+        if (!startX || !startY || !isHorizontal) return;
+        
+        const deltaX = e.changedTouches[0].clientX - startX;
+        
+        // Swipe right for previous, left for next
+        if (Math.abs(deltaX) > 50) {
+            if (deltaX > 0) {
+                prevSong();
+            } else {
+                nextSong();
+            }
+            showToast(deltaX > 0 ? 'Previous' : 'Next');
+        }
+        
+        startX = startY = null;
+        isHorizontal = false;
+    }, { passive: true });
+    
+    // Double tap to play/pause
+    let lastTap = 0;
+    document.addEventListener('touchstart', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        
+        if (tapLength < 500 && tapLength > 0) {
+            // Double tap detected
+            e.preventDefault();
+            togglePlay();
+        }
+        
+        lastTap = currentTime;
+    }, { passive: true });
+}
+
+// Handle Visibility Change
+function handleVisibilityChange() {
+    if (document.hidden) {
+        // Page is hidden, pause if playing
+        if (state.isPlaying) {
+            elements.audio.dataset.wasPlaying = 'true';
+        }
+    } else if (elements.audio.dataset.wasPlaying === 'true') {
+        // Page is visible again, resume if was playing
+        delete elements.audio.dataset.wasPlaying;
+        if (state.autoplay) {
+            playSong().catch(console.error);
+        }
+    }
+}
+
+// PWA Installation
+function setupInstallPrompt() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        state.deferredPrompt = e;
+        
+        // Show install prompt after 5 seconds
+        setTimeout(() => {
+            if (state.deferredPrompt && !isAppInstalled()) {
+                elements.installPrompt.classList.add('show');
+            }
+        }, 5000);
+    });
+    
+    elements.installBtn.addEventListener('click', async () => {
+        if (!state.deferredPrompt) return;
+        
+        state.deferredPrompt.prompt();
+        const { outcome } = await state.deferredPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+            showToast('App installed successfully!');
+        }
+        
+        elements.installPrompt.classList.remove('show');
+        state.deferredPrompt = null;
+    });
+    
+    elements.installClose.addEventListener('click', () => {
+        elements.installPrompt.classList.remove('show');
+    });
+}
+
+function isAppInstalled() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           navigator.standalone ||
+           document.referrer.includes('android-app://');
+}
+
+// Service Worker for PWA
+function setupServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(console.error);
+        });
+    }
+}
+
+// Load saved preferences
+function loadPreferences() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+        document.body.setAttribute('data-theme', savedTheme);
+        elements.themeToggle.innerHTML = `<i class="fas fa-${savedTheme === 'light' ? 'sun' : 'moon'}"></i>`;
+    }
+    
+    const savedVolume = localStorage.getItem('volume');
+    if (savedVolume) {
+        state.volume = parseFloat(savedVolume);
+        elements.audio.volume = state.volume;
+        elements.volume.value = state.volume * 100;
+    }
+    
+    const audioEnabled = localStorage.getItem('audioEnabled');
+    if (audioEnabled === 'true') {
+        state.isAudioEnabled = true;
+    }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    loadPreferences();
+    initApp();
+});
+
+// Handle offline/online status
+window.addEventListener('online', () => {
+    showToast('Back online!');
+});
+
+window.addEventListener('offline', () => {
+    showToast('You are offline');
+});
+
+// Prevent pull-to-refresh on mobile
+document.addEventListener('touchmove', (e) => {
+    if (e.scale !== 1) {
+        e.preventDefault();
+    }
+}, { passive: false });const prevBtn = document.getElementById('prev');
 const repeatBtn = document.getElementById('repeat-btn');
 const autoplayBtn = document.getElementById('autoplay-btn');
 const progress = document.getElementById('progress');
