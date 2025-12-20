@@ -9,7 +9,7 @@ const songs = [
     title: "Mizlecca",
     artist: "Hagali",
     src: "song2.mp3",
-    cover: "song2.jpg"
+    cover: "song2.jpeg"
   },
 ];
 
