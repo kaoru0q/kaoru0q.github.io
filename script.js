@@ -25,16 +25,355 @@ const songs = [
   },
 ];
 
-let index = 0;
-let audioContext;
-let isAudioUnlocked = false;
-let wasPlaying = false;
+let currentSongIndex = 0;
+let isAudioEnabled = false;
+let repeatMode = 'off'; // 'off', 'all', 'one'
+let autoplayEnabled = true;
 
 // DOM Elements
-const audio = document.getElementById("audio");
-const playBtn = document.getElementById("play");
-const nextBtn = document.getElementById("next");
-const prevBtn = document.getElementById("prev");
+const audio = document.getElementById('audio');
+const playBtn = document.getElementById('play');
+const nextBtn = document.getElementById('next');
+const prevBtn = document.getElementById('prev');
+const repeatBtn = document.getElementById('repeat-btn');
+const autoplayBtn = document.getElementById('autoplay-btn');
+const progress = document.getElementById('progress');
+const title = document.getElementById('title');
+const artist = document.getElementById('artist');
+const cover = document.getElementById('cover');
+const currentTimeEl = document.getElementById('current-time');
+const durationEl = document.getElementById('duration');
+const repeatStatusEl = document.getElementById('repeat-status');
+const autoplayStatusEl = document.getElementById('autoplay-status');
+
+// Format waktu
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Update status display
+function updateStatusDisplay() {
+  const repeatTexts = {
+    'off': 'Repeat: Off',
+    'all': 'Repeat: All',
+    'one': 'Repeat: One'
+  };
+  
+  repeatStatusEl.textContent = repeatTexts[repeatMode];
+  autoplayStatusEl.textContent = `Auto-play: ${autoplayEnabled ? 'On' : 'Off'}`;
+  
+  // Update button appearance
+  repeatBtn.className = '';
+  if (repeatMode === 'all') {
+    repeatBtn.classList.add('active');
+  } else if (repeatMode === 'one') {
+    repeatBtn.classList.add('active', 'repeat-one');
+  }
+  
+  autoplayBtn.classList.toggle('active', autoplayEnabled);
+}
+
+// Toggle repeat mode
+function toggleRepeat() {
+  const modes = ['off', 'all', 'one'];
+  const currentIndex = modes.indexOf(repeatMode);
+  repeatMode = modes[(currentIndex + 1) % modes.length];
+  updateStatusDisplay();
+  
+  // Change icon based on mode
+  const icons = {
+    'off': 'fa-redo',
+    'all': 'fa-redo',
+    'one': 'fa-redo-alt'
+  };
+  
+  repeatBtn.innerHTML = `<i class="fas ${icons[repeatMode]}"></i>`;
+  
+  console.log(`Repeat mode: ${repeatMode}`);
+}
+
+// Toggle autoplay
+function toggleAutoplay() {
+  autoplayEnabled = !autoplayEnabled;
+  updateStatusDisplay();
+  
+  // Change icon
+  const icon = autoplayEnabled ? 'fa-play-circle' : 'fa-pause-circle';
+  autoplayBtn.innerHTML = `<i class="fas ${icon}"></i>`;
+  
+  console.log(`Auto-play: ${autoplayEnabled ? 'ON' : 'OFF'}`);
+}
+
+// Enable audio (untuk browser restrictions)
+function enableAudio() {
+  if (isAudioEnabled) return Promise.resolve();
+  
+  return new Promise((resolve) => {
+    // Coba play audio yang sangat kecil volumenya
+    const originalVolume = audio.volume;
+    audio.volume = 0.01;
+    
+    audio.play().then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = originalVolume;
+      isAudioEnabled = true;
+      console.log("Audio enabled successfully");
+      resolve();
+    }).catch(error => {
+      console.log("Auto-enable failed, will enable on first user click");
+      isAudioEnabled = false;
+      resolve();
+    });
+  });
+}
+
+// Load song
+function loadSong(index) {
+  if (index < 0) index = songs.length - 1;
+  if (index >= songs.length) index = 0;
+  
+  currentSongIndex = index;
+  const song = songs[index];
+  
+  // Update UI
+  title.textContent = song.title;
+  artist.textContent = song.artist;
+  cover.src = song.cover;
+  
+  // Set audio source
+  audio.src = song.src;
+  
+  // Reset progress
+  progress.value = 0;
+  currentTimeEl.textContent = "0:00";
+  
+  // Load audio
+  audio.load();
+  
+  console.log(`Loaded: ${song.title}`);
+  
+  // Update duration when metadata loads
+  audio.addEventListener('loadedmetadata', function updateDuration() {
+    if (audio.duration && !isNaN(audio.duration)) {
+      durationEl.textContent = formatTime(audio.duration);
+    }
+    audio.removeEventListener('loadedmetadata', updateDuration);
+  }, { once: true });
+}
+
+// Play/pause audio
+async function togglePlay() {
+  try {
+    if (!isAudioEnabled) {
+      await enableAudio();
+    }
+    
+    if (audio.paused) {
+      await audio.play();
+      playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    } else {
+      audio.pause();
+      playBtn.innerHTML = '<i class="fas fa-play"></i>';
+    }
+  } catch (error) {
+    console.error("Play error:", error);
+    
+    // Jika gagal karena user interaction, minta user klik
+    if (error.name === 'NotAllowedError') {
+      alert("Please click the Play button again to start music");
+      playBtn.innerHTML = '<i class="fas fa-play"></i>';
+    }
+  }
+}
+
+// Next song dengan auto-play
+function nextSong() {
+  // Tampilkan loading state
+  const originalHTML = nextBtn.innerHTML;
+  nextBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  nextBtn.disabled = true;
+  
+  // Simpan apakah sedang play
+  const wasPlaying = !audio.paused;
+  
+  // Tentukan lagu berikutnya
+  let nextIndex = currentSongIndex + 1;
+  if (nextIndex >= songs.length) nextIndex = 0;
+  
+  loadSong(nextIndex);
+  
+  // Jika sebelumnya sedang play DAN auto-play enabled, play lagu baru
+  if (wasPlaying && autoplayEnabled) {
+    setTimeout(() => {
+      audio.play().then(() => {
+        playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+      }).catch(console.error);
+    }, 300);
+  } else if (wasPlaying) {
+    // Jika auto-play off, tetap update play button ke Play
+    playBtn.innerHTML = '<i class="fas fa-play"></i>';
+  }
+  
+  // Reset button setelah 500ms
+  setTimeout(() => {
+    nextBtn.innerHTML = originalHTML;
+    nextBtn.disabled = false;
+  }, 500);
+}
+
+// Previous song dengan auto-play
+function prevSong() {
+  // Tampilkan loading state
+  const originalHTML = prevBtn.innerHTML;
+  prevBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  prevBtn.disabled = true;
+  
+  // Simpan apakah sedang play
+  const wasPlaying = !audio.paused;
+  
+  // Tentukan lagu sebelumnya
+  let prevIndex = currentSongIndex - 1;
+  if (prevIndex < 0) prevIndex = songs.length - 1;
+  
+  loadSong(prevIndex);
+  
+  // Jika sebelumnya sedang play DAN auto-play enabled, play lagu baru
+  if (wasPlaying && autoplayEnabled) {
+    setTimeout(() => {
+      audio.play().then(() => {
+        playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+      }).catch(console.error);
+    }, 300);
+  } else if (wasPlaying) {
+    // Jika auto-play off, tetap update play button ke Play
+    playBtn.innerHTML = '<i class="fas fa-play"></i>';
+  }
+  
+  // Reset button setelah 500ms
+  setTimeout(() => {
+    prevBtn.innerHTML = originalHTML;
+    prevBtn.disabled = false;
+  }, 500);
+}
+
+// Update progress bar
+audio.addEventListener('timeupdate', () => {
+  if (audio.duration && !isNaN(audio.duration)) {
+    const progressPercent = (audio.currentTime / audio.duration) * 100;
+    progress.value = progressPercent;
+    currentTimeEl.textContent = formatTime(audio.currentTime);
+  }
+});
+
+// Seek when progress bar is changed
+progress.addEventListener('input', () => {
+  if (audio.duration && !isNaN(audio.duration)) {
+    const seekTime = (progress.value / 100) * audio.duration;
+    audio.currentTime = seekTime;
+  }
+});
+
+// When song ends
+audio.addEventListener('ended', () => {
+  console.log("Song ended, repeat mode:", repeatMode);
+  
+  if (repeatMode === 'one') {
+    // Repeat satu lagu
+    audio.currentTime = 0;
+    audio.play().then(() => {
+      playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    }).catch(console.error);
+  } else if (repeatMode === 'all') {
+    // Repeat semua lagu, lanjut ke next
+    nextSong();
+  } else if (autoplayEnabled) {
+    // Auto-play ke next lagu jika enabled
+    nextSong();
+  } else {
+    // Hanya stop
+    playBtn.innerHTML = '<i class="fas fa-play"></i>';
+  }
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  // Load first song
+  loadSong(0);
+  
+  // Update status display
+  updateStatusDisplay();
+  
+  // Enable audio on first click
+  document.addEventListener('click', function enableOnClick() {
+    enableAudio();
+    document.removeEventListener('click', enableOnClick);
+  }, { once: true });
+});
+
+// Event listeners
+playBtn.addEventListener('click', togglePlay);
+nextBtn.addEventListener('click', nextSong);
+prevBtn.addEventListener('click', prevSong);
+repeatBtn.addEventListener('click', toggleRepeat);
+autoplayBtn.addEventListener('click', toggleAutoplay);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  switch(e.code) {
+    case 'Space':
+      e.preventDefault();
+      togglePlay();
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      nextSong();
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      prevSong();
+      break;
+    case 'KeyR':
+      if (e.ctrlKey) {
+        e.preventDefault();
+        toggleRepeat();
+      }
+      break;
+    case 'KeyA':
+      if (e.ctrlKey) {
+        e.preventDefault();
+        toggleAutoplay();
+      }
+      break;
+  }
+});
+
+// Handle page visibility (pause when tab is hidden)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && !audio.paused) {
+    audio.dataset.wasPlaying = 'true';
+  } else if (!document.hidden && audio.dataset.wasPlaying === 'true') {
+    delete audio.dataset.wasPlaying;
+    if (autoplayEnabled) {
+      audio.play().catch(console.error);
+    }
+  }
+});
+
+// Error handling
+audio.addEventListener('error', (e) => {
+  console.error('Audio error:', audio.error);
+  
+  // Fallback: coba load lagu berikutnya jika error
+  if (audio.error && audio.error.code === 4) {
+    console.log('Media not found, trying next song...');
+    setTimeout(() => {
+      nextSong();
+    }, 1000);
+  }
+});const prevBtn = document.getElementById("prev");
 const progress = document.getElementById("progress");
 const title = document.getElementById("title");
 const artist = document.getElementById("artist");
