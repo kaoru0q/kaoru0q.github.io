@@ -1,40 +1,202 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Musik Hanif</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <base href="https://kaoru0q.github.io/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🎵 Musik Hanif | Music Player</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icon.png">
+    <meta name="theme-color" content="#1db954">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loading">
+        <div class="loading-content">
+            <div class="music-icon">
+                <i class="fas fa-music"></i>
+            </div>
+            <div class="loading-text">Loading Music Player...</div>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+        </div>
+    </div>
 
-<div class="welcome">
-  <h1><i class="fas fa-music"></i> Musik Hanif</h1>
-  <p>Enjoy your favorite music with this beautiful player</p>
-  
-  <div class="settings">
-    <div class="setting-item">
-      <i class="fas fa-redo"></i>
-      <span id="repeat-status">Repeat: Off</span>
+    <!-- Main Container -->
+    <div class="container" id="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-music"></i>
+                <span>Musik Hanif</span>
+            </div>
+            <div class="theme-toggle" id="theme-toggle">
+                <i class="fas fa-moon"></i>
+            </div>
+        </header>
+
+        <!-- Now Playing Section -->
+        <section class="now-playing">
+            <div class="album-art-container">
+                <div class="album-art">
+                    <img id="cover" src="gambar/song1.jpg" alt="Album Cover" crossorigin="anonymous">
+                    <div class="vinyl-ring"></div>
+                    <div class="vinyl-hole"></div>
+                </div>
+                <div class="visualizer" id="visualizer">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                </div>
+            </div>
+
+            <div class="song-info">
+                <h1 id="title" class="song-title">Chinmoku no Majo</h1>
+                <p id="artist" class="artist-name">Yoshihisa Kato</p>
+                <div class="song-progress">
+                    <div class="time-display">
+                        <span id="current-time">0:00</span>
+                        <span id="duration">0:00</span>
+                    </div>
+                    <div class="progress-container">
+                        <input type="range" id="progress" value="0" min="0" max="100" class="progress-bar">
+                        <div class="progress-bg"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Playlist -->
+        <section class="playlist-section">
+            <h2 class="section-title">
+                <i class="fas fa-list-music"></i> Current Playlist
+                <span class="song-count" id="song-count">4 songs</span>
+            </h2>
+            <div class="playlist" id="playlist">
+                <!-- Songs will be dynamically loaded -->
+            </div>
+        </section>
+
+        <!-- Controls -->
+        <section class="controls-section">
+            <div class="mode-controls">
+                <button class="mode-btn" id="repeat-btn" title="Repeat Mode">
+                    <i class="fas fa-redo"></i>
+                    <span class="mode-text" id="repeat-text">Off</span>
+                </button>
+                <button class="mode-btn" id="shuffle-btn" title="Shuffle">
+                    <i class="fas fa-random"></i>
+                    <span class="mode-text" id="shuffle-text">Off</span>
+                </button>
+                <button class="mode-btn" id="autoplay-btn" title="Auto-play">
+                    <i class="fas fa-infinity"></i>
+                    <span class="mode-text" id="autoplay-text">On</span>
+                </button>
+            </div>
+
+            <div class="player-controls">
+                <button class="control-btn large" id="prev-btn" title="Previous Song">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                
+                <button class="control-btn play-btn" id="play-btn" title="Play/Pause">
+                    <i class="fas fa-play"></i>
+                </button>
+                
+                <button class="control-btn large" id="next-btn" title="Next Song">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+            </div>
+
+            <div class="volume-control">
+                <i class="fas fa-volume-up volume-icon"></i>
+                <input type="range" id="volume" min="0" max="100" value="80" class="volume-slider">
+            </div>
+        </section>
+
+        <!-- Settings -->
+        <div class="settings-panel" id="settings-panel">
+            <div class="settings-header">
+                <h3><i class="fas fa-cog"></i> Settings</h3>
+                <button class="close-settings" id="close-settings">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label for="audio-quality">
+                        <i class="fas fa-file-audio"></i> Audio Quality
+                    </label>
+                    <select id="audio-quality">
+                        <option value="high">High Quality</option>
+                        <option value="medium" selected>Medium Quality</option>
+                        <option value="low">Low Quality (Save Data)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label for="crossfade">
+                        <i class="fas fa-exchange-alt"></i> Crossfade
+                    </label>
+                    <input type="range" id="crossfade" min="0" max="10" value="0">
+                    <span id="crossfade-value">0s</span>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <i class="fas fa-mobile-alt"></i> Sleep Timer
+                    </label>
+                    <select id="sleep-timer">
+                        <option value="0">Off</option>
+                        <option value="15">15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="60">60 minutes</option>
+                        <option value="90">90 minutes</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-target="player">
+                <i class="fas fa-play-circle"></i>
+                <span>Player</span>
+            </button>
+            <button class="nav-btn" data-target="playlist">
+                <i class="fas fa-list"></i>
+                <span>Playlist</span>
+            </button>
+            <button class="nav-btn" id="settings-btn">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </button>
+        </nav>
     </div>
-    <div class="setting-item">
-      <i class="fas fa-play-circle"></i>
-      <span id="autoplay-status">Auto-play: On</span>
+
+    <!-- Audio Element -->
+    <audio id="audio" preload="metadata" crossorigin="anonymous"></audio>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- PWA Install Prompt -->
+    <div class="install-prompt" id="install-prompt">
+        <div class="install-content">
+            <i class="fas fa-download"></i>
+            <div class="install-text">Install Musik Hanif for better experience</div>
+            <button class="install-btn" id="install-btn">Install</button>
+            <button class="install-close" id="install-close">×</button>
+        </div>
     </div>
-  </div>
-  
-  <div class="social-links">
-    <a href="https://github.com/kacru0q" target="_blank" class="social-link">
-      <i class="fab fa-github"></i> GitHub
-    </a>
-    <a href="https://instagram.com" target="_blank" class="social-link">
-      <i class="fab fa-instagram"></i> Instagram
-    </a>
-  </div>
-  
-  <div class="song-list">
+
+    <script src="script.js"></script>
+</body>
+              </html>  <div class="song-list">
     <h3><i class="fas fa-list-music"></i> Current Playlist</h3>
     <div class="song-item">Chinmoku no Majo - Yoshihisa Kato</div>
     <div class="song-item">Mizlecca - Hagali</div>
