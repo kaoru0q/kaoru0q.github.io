@@ -25,11 +25,20 @@
     <button id="next">⏭ Next</button>
   </div>
 
+  <div class="song" 
+     data-audio="audio/song1.mp3" 
+     data-image="images/song1.jpg">  
+  </div>
+
   <input type="range" id="progress" value="0" min="0" max="100">
 </div>
 
 <audio id="audio" preload="metadata"></audio>
 
+<script>
+    const AUDIO_PATH = "lagu/";
+    const IMAGE_PATH = "gambar/";
+</script>
 <script src="script.js"></script>
 </body>
 </html>
