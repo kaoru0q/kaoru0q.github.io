@@ -355,19 +355,6 @@ audio.addEventListener('pause', function() {
 window.addEventListener('load', function() {
   // Cek jika file audio gagal load setelah 3 detik
   setTimeout(() => {
-    if (audio.error || !audio.src) {
-      console.log("Using demo audio URLs...");
-      
-      // Ganti dengan demo URLs
-      songs[0].src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-      songs[1].src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3";
-      songs[2].src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3";
-      
-      // Load ulang song saat ini
-      loadSong(index).then(() => {
-        console.log("Demo songs loaded");
-      });
-    }
   }, 3000);
 });
 
@@ -379,7 +366,7 @@ document.addEventListener('keydown', function(e) {
       playBtn.click();
       break;
     case 'ArrowRight':
-      e.preventDefault();
+      e.preventDefault);
       nextBtn.click();
       break;
     case 'ArrowLeft':
