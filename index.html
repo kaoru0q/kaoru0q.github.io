@@ -6,13 +6,12 @@
   <title>Musik Hanif</title>
   <link rel="stylesheet" href="style.css">
   <base href="https://kaoru0q.github.io/">
-  <base href="./">
 </head>
 <body>
 
 <div class="player">
   <div class="info">
-    <img id="cover" src="cover1.jpg" alt="Album Cover">
+    <img id="cover" src="gambar/song1.jpg" alt="Album Cover">
     <div>
       <h3 id="title">Song Title</h3>
       <p id="artist">Artist</p>
@@ -25,20 +24,11 @@
     <button id="next">⏭ Next</button>
   </div>
 
-  <div class="song" 
-     data-audio="audio/song1.mp3" 
-     data-image="images/song1.jpg">  
-  </div>
-
   <input type="range" id="progress" value="0" min="0" max="100">
 </div>
 
 <audio id="audio" preload="metadata"></audio>
 
-<script>
-    const AUDIO_PATH = "lagu/";
-    const IMAGE_PATH = "gambar/";
-</script>
 <script src="script.js"></script>
 </body>
 </html>
