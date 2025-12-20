@@ -1,9 +1,9 @@
 const songs = [
   {
-    title: "Song 1",
-    artist: "Artist A",
+    title: "Chinmoku no Majo",
+    artist: "Yoshihisa Kato",
     src: "song1.mp3",
-    cover: "cover1.jpg"
+    cover: "song1.jpg"
   },
   {
     title: "Song 2",
