@@ -6,10 +6,10 @@ const songs = [
     cover: "song1.jpg"
   },
   {
-    title: "Song 2",
-    artist: "Artist B",
+    title: "Mizlecca",
+    artist: "Hagali",
     src: "song2.mp3",
-    cover: "cover2.jpg"
+    cover: "song2.jpg"
   },
 ];
 
