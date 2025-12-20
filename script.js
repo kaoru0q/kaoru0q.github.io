@@ -9,7 +9,7 @@ const songs = [
     title: "Mizlecca",
     artist: "Hagali",
     src: "song2.mp3",
-    cover: https://kaoru0q.github.io/gambar/song2.jpeg
+    cover: "https://kaoru0q.github.io/gambar/song2.jpeg"
   },
   {
     title: "Fig Luudhran",
