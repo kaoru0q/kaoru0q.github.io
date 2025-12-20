@@ -1,40 +1,109 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+.settings {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin: 20px 0;
+  flex-wrap: wrap;
 }
 
-body {
-  font-family: Arial, sans-serif;
-  min-height: 100vh;
-  padding-bottom: 120px; /* Untuk ruang player */
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.player {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(90deg, #181818, #282828);
-  padding: 15px 25px;
+.setting-item {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px 20px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  color: white;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
-  z-index: 1000;
+  gap: 10px;
 }
 
-.info {
+.setting-item i {
+  color: #1db954;
+}
+
+/* Tombol kontrol tambahan */
+.controls {
   display: flex;
   align-items: center;
-  min-width: 200px;
+  gap: 10px;
   flex: 1;
+  justify-content: center;
 }
 
-.info img {
+.controls button {
+  background: linear-gradient(135deg, #333, #444);
+  border: none;
+  color: white;
+  font-size: 1em;
+  padding: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 50px;
+  height: 50px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.controls button:hover {
+  transform: translateY(-3px);
+  background: linear-gradient(135deg, #444, #555);
+}
+
+.controls button:active {
+  transform: translateY(-1px);
+}
+
+/* Tombol aktif */
+#repeat-btn.active {
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  color: white;
+}
+
+#autoplay-btn.active {
+  background: linear-gradient(135deg, #ff7e5f, #feb47b);
+  color: white;
+}
+
+/* Tombol play khusus */
+#play {
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  width: 60px;
+  height: 60px;
+  font-size: 1.2em;
+}
+
+/* Mode repeat berbeda */
+#repeat-btn.repeat-one {
+  background: linear-gradient(135deg, #ff7e5f, #feb47b);
+}
+
+/* Responsive untuk tombol */
+@media (max-width: 768px) {
+  .controls {
+    gap: 8px;
+  }
+  
+  .controls button {
+    width: 45px;
+    height: 45px;
+    padding: 10px;
+  }
+  
+  #play {
+    width: 55px;
+    height: 55px;
+  }
+  
+  .settings {
+    gap: 15px;
+  }
+  
+  .setting-item {
+    padding: 8px 15px;
+    font-size: 0.9em;
+  }
+}  width: 50px;
   height: 50px;
   border-radius: 5px;
   margin-right: 15px;
@@ -139,6 +208,4 @@ body {
   }
   
   body {
-    padding-bottom: 160px;
-  }
-}
+    padding-b
