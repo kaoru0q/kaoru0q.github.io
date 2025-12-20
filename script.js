@@ -28,13 +28,363 @@ const songs = [
 let index = 0;
 let audioContext;
 let isAudioUnlocked = false;
-let wasPlaying = false; // Untuk track apakah sebelumnya sedang play
+let wasPlaying = false;
 
 // DOM Elements
 const audio = document.getElementById("audio");
 const playBtn = document.getElementById("play");
 const nextBtn = document.getElementById("next");
 const prevBtn = document.getElementById("prev");
+const progress = document.getElementById("progress");
+const title = document.getElementById("title");
+const artist = document.getElementById("artist");
+const cover = document.getElementById("cover");
+
+// Error handling untuk audio
+audio.addEventListener('error', function(e) {
+  console.error('Audio Error:', audio.error);
+  alert(`Error loading audio: ${audio.error?.message || 'Unknown error'}. Please check if audio files exist.`);
+});
+
+// Fungsi untuk unlock audio - versi lebih sederhana
+function unlockAudio() {
+  if (isAudioUnlocked) return Promise.resolve(true);
+  
+  console.log("Unlocking audio...");
+  
+  return new Promise((resolve) => {
+    // Create silent buffer dan play
+    const silentBuffer = audioContext?.createBuffer(1, 1, 22050);
+    if (silentBuffer) {
+      const source = audioContext.createBufferSource();
+      source.buffer = silentBuffer;
+      source.connect(audioContext.destination);
+      source.start(0);
+    }
+    
+    // Coba play audio dengan volume normal
+    audio.volume = 0.1;
+    const playPromise = audio.play();
+    
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = 1.0;
+        isAudioUnlocked = true;
+        console.log("Audio unlocked successfully");
+        resolve(true);
+      }).catch(error => {
+        console.log("First unlock attempt failed:", error.message);
+        // Coba pendekatan lain
+        document.body.addEventListener('click', function unlockHandler() {
+          audio.volume = 0.1;
+          audio.play().then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = 1.0;
+            isAudioUnlocked = true;
+            console.log("Audio unlocked via user interaction");
+            document.body.removeEventListener('click', unlockHandler);
+            resolve(true);
+          }).catch(e => {
+            console.log("Still failed, will try later:", e.message);
+            document.body.removeEventListener('click', unlockHandler);
+            resolve(false);
+          });
+        }, { once: true });
+      });
+    } else {
+      isAudioUnlocked = true;
+      resolve(true);
+    }
+  });
+}
+
+// Fungsi load song yang lebih baik
+async function loadSong(i) {
+  if (i < 0) i = songs.length - 1;
+  if (i >= songs.length) i = 0;
+  
+  index = i;
+  const song = songs[i];
+  
+  // Simpan state play sebelumnya
+  wasPlaying = !audio.paused;
+  
+  // Update UI
+  title.textContent = song.title;
+  artist.textContent = song.artist;
+  cover.src = song.cover;
+  
+  // Pause dulu jika sedang play
+  if (!audio.paused) {
+    audio.pause();
+  }
+  
+  // Update audio source
+  audio.src = song.src;
+  
+  // Reset progress bar
+  progress.value = 0;
+  
+  // Load audio baru
+  audio.load();
+  
+  console.log(`Loaded: ${song.title} - ${song.artist}`);
+  
+  // Tunggu sampai audio siap
+  await new Promise(resolve => {
+    if (audio.readyState >= 3) { // HAVE_FUTURE_DATA
+      resolve();
+    } else {
+      audio.addEventListener('loadeddata', () => resolve(), { once: true });
+    }
+  });
+  
+  return true;
+}
+
+// Fungsi play audio
+async function playAudio() {
+  try {
+    // Cek jika audio sudah unlocked
+    if (!isAudioUnlocked) {
+      await unlockAudio();
+    }
+    
+    // Pastikan audio context aktif (untuk mobile)
+    if (audioContext && audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    
+    // Coba play
+    await audio.play();
+    playBtn.textContent = "⏸ Pause";
+    console.log("Playing audio");
+    return true;
+  } catch (error) {
+    console.error("Play failed:", error);
+    
+    // Coba sekali lagi dengan delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    try {
+      await audio.play();
+      playBtn.textContent = "⏸ Pause";
+      return true;
+    } catch (secondError) {
+      console.error("Second attempt failed:", secondError);
+      playBtn.textContent = "▶ Play";
+      
+      // Tampilkan pesan user-friendly untuk mobile
+      if (secondError.name === 'NotAllowedError') {
+        console.log("Please tap the screen to enable audio playback");
+      }
+      
+      return false;
+    }
+  }
+}
+
+// Inisialisasi saat DOM ready
+document.addEventListener('DOMContentLoaded', async function() {
+  // Create Audio Context jika supported
+  if (window.AudioContext || window.webkitAudioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  
+  // Load first song
+  await loadSong(index);
+  
+  // Auto-unlock audio dengan user interaction
+  const unlockEvents = ['click', 'touchstart', 'keydown'];
+  
+  unlockEvents.forEach(eventType => {
+    document.addEventListener(eventType, function unlockOnce() {
+      unlockAudio();
+      // Hapus listener setelah pertama kali di-trigger
+      unlockEvents.forEach(type => {
+        document.removeEventListener(type, unlockOnce);
+      });
+    }, { once: true });
+  });
+});
+
+// Play/Pause button
+playBtn.addEventListener('click', async function(e) {
+  e.preventDefault();
+  
+  if (audio.paused) {
+    await playAudio();
+  } else {
+    audio.pause();
+    playBtn.textContent = "▶ Play";
+  }
+});
+
+// Next button
+nextBtn.addEventListener('click', async function(e) {
+  e.preventDefault();
+  
+  // Tampilkan loading state
+  const originalText = nextBtn.textContent;
+  const originalHTML = nextBtn.innerHTML;
+  nextBtn.textContent = "Loading...";
+  nextBtn.disabled = true;
+  nextBtn.style.opacity = "0.7";
+  
+  try {
+    // Load next song
+    await loadSong((index + 1) % songs.length);
+    
+    // Auto-play jika sebelumnya sedang play
+    if (wasPlaying) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await playAudio();
+    }
+  } catch (error) {
+    console.error("Error on next:", error);
+  } finally {
+    // Restore button
+    nextBtn.textContent = originalText;
+    nextBtn.innerHTML = originalHTML;
+    nextBtn.disabled = false;
+    nextBtn.style.opacity = "1";
+  }
+});
+
+// Prev button
+prevBtn.addEventListener('click', async function(e) {
+  e.preventDefault();
+  
+  // Tampilkan loading state
+  const originalText = prevBtn.textContent;
+  const originalHTML = prevBtn.innerHTML;
+  prevBtn.textContent = "Loading...";
+  prevBtn.disabled = true;
+  prevBtn.style.opacity = "0.7";
+  
+  try {
+    // Load previous song
+    await loadSong((index - 1 + songs.length) % songs.length);
+    
+    // Auto-play jika sebelumnya sedang play
+    if (wasPlaying) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await playAudio();
+    }
+  } catch (error) {
+    console.error("Error on prev:", error);
+  } finally {
+    // Restore button
+    prevBtn.textContent = originalText;
+    prevBtn.innerHTML = originalHTML;
+    prevBtn.disabled = false;
+    prevBtn.style.opacity = "1";
+  }
+});
+
+// Progress bar update
+audio.addEventListener('timeupdate', function() {
+  if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
+    const value = (audio.currentTime / audio.duration) * 100;
+    progress.value = value;
+    
+    // Update progress bar text jika ada
+    const progressText = document.getElementById('progress-time');
+    if (progressText) {
+      const current = formatTime(audio.currentTime);
+      const total = formatTime(audio.duration);
+      progressText.textContent = `${current} / ${total}`;
+    }
+  }
+});
+
+// Helper untuk format waktu
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Progress bar seek
+progress.addEventListener('input', function() {
+  if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
+    audio.currentTime = (progress.value / 100) * audio.duration;
+  }
+});
+
+// When audio ends - auto play next
+audio.addEventListener('ended', async function() {
+  console.log("Song ended, playing next...");
+  playBtn.textContent = "▶ Play";
+  
+  // Auto-play next song
+  await loadSong((index + 1) % songs.length);
+  await playAudio();
+});
+
+// Event untuk update UI
+audio.addEventListener('play', function() {
+  playBtn.textContent = "⏸ Pause";
+  wasPlaying = true;
+});
+
+audio.addEventListener('pause', function() {
+  playBtn.textContent = "▶ Play";
+  wasPlaying = false;
+});
+
+// Keyboard shortcuts - DIPERBAIKI
+document.addEventListener('keydown', function(e) {
+  switch(e.code) {
+    case 'Space':
+      e.preventDefault();
+      playBtn.click();
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      nextBtn.click();
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      prevBtn.click();
+      break;
+  }
+});
+
+// Fallback untuk audio error
+window.addEventListener('load', function() {
+  // Cek jika semua file audio ada
+  songs.forEach((song, i) => {
+    fetch(song.src, { method: 'HEAD' })
+      .then(response => {
+        if (!response.ok) {
+          console.warn(`File not found: ${song.src}`);
+        }
+      })
+      .catch(() => {
+        console.warn(`Cannot access: ${song.src}`);
+      });
+  });
+});
+
+// Tambahan: handle visibility change (saat tab di-switch)
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden && !audio.paused) {
+    // Simpan state untuk resume nanti
+    audio.dataset.wasPlaying = 'true';
+  } else if (!document.hidden && audio.dataset.wasPlaying === 'true') {
+    // Coba resume play jika sebelumnya sedang play
+    delete audio.dataset.wasPlaying;
+    if (wasPlaying) {
+      playAudio().catch(() => {
+        // Ignore error saat resume
+      });
+    }
+  }
+});const prevBtn = document.getElementById("prev");
 const progress = document.getElementById("progress");
 const title = document.getElementById("title");
 const artist = document.getElementById("artist");
