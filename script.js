@@ -11,6 +11,18 @@ const songs = [
     src: "song2.mp3",
     cover: "song2.jpeg"
   },
+  {
+    title: "Fig Luudhran",
+    artist: "Hagali",
+    src: "song3.mp3",
+    cover: "song3.jpg"
+  },
+  {
+    title: "Ebari and The Forest",
+    artist: "Hagali",
+    src: "song4.mp3",
+    cover: "song4.jpg"
+  },
 ];
 
 let index = 0;
