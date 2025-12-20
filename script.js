@@ -8,20 +8,20 @@ const songs = [
   {
     title: "Mizlecca",
     artist: "Hagali",
-    src: "song2.mp3",
-    cover: "https://kaoru0q.github.io/gambar/song2.jpeg"
+    src: "lagu/song2.mp3",
+    cover: "gambar/song2.jpeg"
   },
   {
     title: "Fig Luudhran",
     artist: "Hagali",
-    src: "song3.mp3",
-    cover: "song3.jpg"
+    src: "lagu/song3.mp3",
+    cover: "gambar/song3.jpg"
   },
   {
     title: "Ebari and The Forest",
     artist: "Hagali",
-    src: "song4.mp3",
-    cover: "song4.jpg"
+    src: "lagu/song4.mp3",
+    cover: "gambar/song4.jpg"
   },
 ];
 
