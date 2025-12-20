@@ -2,8 +2,8 @@ const songs = [
   {
     title: "Chinmoku no Majo",
     artist: "Yoshihisa Kato",
-    src: "song1.mp3",
-    cover: "song1.jpg"
+    src: "lagu/song1.mp3",
+    cover: "gambar/song1.jpg"
   },
   {
     title: "Mizlecca",
