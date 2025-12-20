@@ -1,0 +1,144 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  padding-bottom: 120px; /* Untuk ruang player */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.player {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(90deg, #181818, #282828);
+  padding: 15px 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+  z-index: 1000;
+}
+
+.info {
+  display: flex;
+  align-items: center;
+  min-width: 200px;
+  flex: 1;
+}
+
+.info img {
+  width: 50px;
+  height: 50px;
+  border-radius: 5px;
+  margin-right: 15px;
+  object-fit: cover;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.info h3 {
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+.info p {
+  font-size: 14px;
+  color: #b3b3b3;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.controls button {
+  background: #1db954;
+  border: none;
+  color: white;
+  font-size: 16px;
+  margin: 0 10px;
+  padding: 10px 20px;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+}
+
+.controls button:hover {
+  background: #1ed760;
+  transform: scale(1.05);
+}
+
+.controls button:active {
+  transform: scale(0.95);
+}
+
+#progress {
+  flex: 2;
+  max-width: 400px;
+  margin: 0 20px;
+  height: 4px;
+  accent-color: #1db954;
+  background: #404040;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+#progress::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+}
+
+/* Status indicator */
+.status {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1db954;
+  color: white;
+  padding: 3px 10px;
+  border-radius: 10px 10px 0 0;
+  font-size: 12px;
+}
+
+/* Responsif untuk mobile */
+@media (max-width: 768px) {
+  .player {
+    flex-direction: column;
+    padding: 15px;
+    gap: 15px;
+  }
+  
+  .info {
+    width: 100%;
+    margin-bottom: 0;
+  }
+  
+  .controls {
+    width: 100%;
+    order: 3;
+  }
+  
+  #progress {
+    width: 100%;
+    max-width: none;
+    margin: 10px 0;
+    order: 2;
+  }
+  
+  body {
+    padding-bottom: 160px;
+  }
+}
