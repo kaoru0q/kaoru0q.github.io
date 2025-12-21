@@ -37,6 +37,60 @@ const songs = [
         artist: "Chloe Pawapua",
         src: "lagu/song6.mp3",
         cover: "gambar/song6.jpg"
+    },
+        {
+        title: "鸟之诗",
+        artist: "CMJ",
+        src: "lagu/song7.mp3",
+        cover: "gambar/song7.jpg"
+    },
+    {
+        title: "Tiny Light (Music Box)",
+        artist: "Kuno",
+        src: "lagu/song8.mp3",
+        cover: "gambar/song8.jpg"
+    },
+    {
+        title: "dahlah.",
+        artist: "Kaela Kovalskia",
+        src: "lagu/song9.mp3",
+        cover: "gambar/song9.jpg"
+    },
+    {
+        title: "Hitchcock",
+        artist: "Yorushika",
+        src: "lagu/song10.mp3",
+        cover: "gambar/song10.jpg"
+    },
+    {
+        title: "Death Bed",
+        artist: "Powfu",
+        src: "lagu/song11.mp3",
+        cover: "gambar/song11.jpg"
+    },
+    {
+        title: "Bunny Girl",
+        artist: "AKASAKI",
+        src: "lagu/song12.mp3",
+        cover: "gambar/song12.jpg"
+    },
+    {
+        title: "Fukashigi no Karte",
+        artist: "Bunny Girl",
+        src: "lagu/song13.mp3",
+        cover: "gambar/song13.jpg"
+    },
+    {
+        title: "golden hour",
+        artist: "JVKE",
+        src: "lagu/song14.mp3",
+        cover: "gambar/song14.png"
+    },
+    {
+        title: "this is what autumn feels like",
+        artist: "JVKE",
+        src: "lagu/song15.mp3",
+        cover: "gambar/song15.png"
     }
 ];
 
