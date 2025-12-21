@@ -290,12 +290,13 @@ function renderPlaylist() {
         item.className = `playlist-item ${index === currentIndex ? 'active' : ''}`;
         item.innerHTML = `
             <img src="${song.cover}" alt="${song.title}" 
+                 onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"40\" viewBox=\"0 0 40 40\"><rect width=\"40\" height=\"40\" fill=\"%23f0f0f0\"/><text x=\"20\" y=\"22\" text-anchor=\"middle\" font-size=\"10\" fill=\"%23666\">🎵</text></svg>'">
             <div class="playlist-info">
                 <div class="playlist-title">${song.title}</div>
                 <div class="playlist-artist">${song.artist}</div>
             </div>
         `;
-
+        
         item.addEventListener('click', () => {
             console.log('Playlist item clicked:', index);
             const wasPlaying = !audio.paused;
