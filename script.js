@@ -1,4 +1,4 @@
-console.log('Script.js loaded!'); // Debug log
+console.log('Script.js loaded!');
 
 // Music data
 const songs = [
@@ -32,6 +32,7 @@ const songs = [
 let currentIndex = 0;
 let isPlaying = false;
 let repeatMode = 'off';
+let audioEnabled = false;
 
 // DOM Elements
 const audio = document.getElementById('audio');
@@ -49,15 +50,6 @@ const artistEl = document.getElementById('artist');
 const coverEl = document.getElementById('cover');
 const playlistItems = document.getElementById('playlist-items');
 
-console.log('DOM Elements found:', {
-    audio: !!audio,
-    playBtn: !!playBtn,
-    prevBtn: !!prevBtn,
-    nextBtn: !!nextBtn,
-    repeatBtn: !!repeatBtn,
-    playlistItems: !!playlistItems
-});
-
 // Format time
 function formatTime(seconds) {
     if (isNaN(seconds)) return '0:00';
@@ -66,9 +58,29 @@ function formatTime(seconds) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+// Enable audio for mobile
+async function enableAudio() {
+    if (audioEnabled) return true;
+    
+    console.log('Enabling audio...');
+    try {
+        audio.volume = 0.01;
+        await audio.play();
+        await audio.pause();
+        audio.currentTime = 0;
+        audio.volume = 1;
+        audioEnabled = true;
+        console.log('Audio enabled successfully');
+        return true;
+    } catch (error) {
+        console.log('Audio enable failed:', error.message);
+        return false;
+    }
+}
+
 // Load song
-function loadSong(index) {
-    console.log('loadSong called with index:', index);
+async function loadSong(index, autoPlay = false) {
+    console.log(`loadSong: index=${index}, autoPlay=${autoPlay}`);
     
     // Validate index
     if (index < 0) index = songs.length - 1;
@@ -84,36 +96,81 @@ function loadSong(index) {
     artistEl.textContent = song.artist;
     coverEl.src = song.cover;
     
-    // Set audio source
+    // Store if was playing
+    const wasPlaying = !audio.paused;
+    
+    // Stop current audio
+    if (!audio.paused) {
+        audio.pause();
+    }
+    
+    // Set new audio source
     audio.src = song.src;
     
     // Reset progress
     progressBar.style.width = '0%';
     currentTimeEl.textContent = '0:00';
     
-    // Load audio
+    // Load new audio
     audio.load();
     
     // Update playlist
     updatePlaylistUI();
+    
+    // Auto-play if requested
+    if (autoPlay && wasPlaying) {
+        console.log('Attempting auto-play after song change');
+        // Wait a bit for audio to load
+        setTimeout(() => {
+            playSong().catch(console.error);
+        }, 300);
+    }
+}
+
+// Play song with error handling
+async function playSong() {
+    console.log('playSong called, audioEnabled:', audioEnabled);
+    
+    try {
+        if (!audioEnabled) {
+            const enabled = await enableAudio();
+            if (!enabled) {
+                console.log('Cannot play: audio not enabled');
+                return;
+            }
+        }
+        
+        await audio.play();
+        playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        isPlaying = true;
+        console.log('Playback started');
+    } catch (error) {
+        console.error('Play failed:', error);
+        
+        // If autoplay blocked, show play button
+        if (error.name === 'NotAllowedError') {
+            playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            isPlaying = false;
+            
+            // Enable audio for next attempt
+            audio.volume = 0.01;
+            audio.play().then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.volume = 1;
+                audioEnabled = true;
+                console.log('Audio enabled via error recovery');
+            }).catch(() => {});
+        }
+    }
 }
 
 // Toggle play/pause
-function togglePlay() {
+async function togglePlay() {
     console.log('togglePlay called, audio.paused:', audio.paused);
     
     if (audio.paused) {
-        audio.play().then(() => {
-            console.log('Playback started');
-            playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-            isPlaying = true;
-        }).catch(error => {
-            console.error('Play failed:', error);
-            // Try to enable audio for mobile
-            if (error.name === 'NotAllowedError') {
-                enableAudio();
-            }
-        });
+        await playSong();
     } else {
         audio.pause();
         playBtn.innerHTML = '<i class="fas fa-play"></i>';
@@ -121,25 +178,11 @@ function togglePlay() {
     }
 }
 
-// Enable audio for mobile
-function enableAudio() {
-    console.log('Enabling audio for mobile...');
-    audio.volume = 0.01;
-    audio.play().then(() => {
-        audio.pause();
-        audio.currentTime = 0;
-        audio.volume = 1;
-        console.log('Audio enabled');
-    }).catch(console.error);
-}
-
 // Next song
 function nextSong() {
     console.log('nextSong called');
-    loadSong(currentIndex + 1);
-    if (isPlaying) {
-        setTimeout(() => audio.play().catch(console.error), 300);
-    }
+    const wasPlaying = !audio.paused;
+    loadSong(currentIndex + 1, wasPlaying);
 }
 
 // Previous song
@@ -152,10 +195,8 @@ function prevSong() {
         return;
     }
     
-    loadSong(currentIndex - 1);
-    if (isPlaying) {
-        setTimeout(() => audio.play().catch(console.error), 300);
-    }
+    const wasPlaying = !audio.paused;
+    loadSong(currentIndex - 1, wasPlaying);
 }
 
 // Toggle repeat
@@ -192,17 +233,49 @@ function updateDuration() {
     durationEl.textContent = formatTime(audio.duration);
 }
 
-// Handle song end
-function handleSongEnd() {
+// Handle song end - FIXED AUTO-PLAY
+async function handleSongEnd() {
     console.log('Song ended, repeatMode:', repeatMode);
     
     if (repeatMode === 'on') {
         // Repeat current song
         audio.currentTime = 0;
-        audio.play().catch(console.error);
+        setTimeout(() => {
+            playSong().catch(console.error);
+        }, 100);
     } else {
-        // Auto-play next song
-        nextSong();
+        // Auto-play next song with delay
+        console.log('Auto-playing next song...');
+        const nextIndex = (currentIndex + 1) % songs.length;
+        currentIndex = nextIndex;
+        const song = songs[nextIndex];
+        
+        // Update UI first
+        titleEl.textContent = song.title;
+        artistEl.textContent = song.artist;
+        coverEl.src = song.cover;
+        updatePlaylistUI();
+        
+        // Stop current audio
+        audio.pause();
+        
+        // Set new audio source
+        audio.src = song.src;
+        audio.load();
+        
+        // Wait for audio to load, then try to play
+        setTimeout(async () => {
+            try {
+                await audio.play();
+                playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                isPlaying = true;
+                console.log('Auto-play successful!');
+            } catch (error) {
+                console.log('Auto-play blocked, user must click:', error.message);
+                playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                isPlaying = false;
+            }
+        }, 500);
     }
 }
 
@@ -216,7 +289,8 @@ function renderPlaylist() {
         const item = document.createElement('div');
         item.className = `playlist-item ${index === currentIndex ? 'active' : ''}`;
         item.innerHTML = `
-            <img src="${song.cover}" alt="${song.title}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"40\" viewBox=\"0 0 40 40\"><rect width=\"40\" height=\"40\" fill=\"%23ccc\"/><text x=\"20\" y=\"22\" text-anchor=\"middle\" font-size=\"10\" fill=\"%23666\">No Image</text></svg>'">
+            <img src="${song.cover}" alt="${song.title}" 
+                 onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"40\" viewBox=\"0 0 40 40\"><rect width=\"40\" height=\"40\" fill=\"%23f0f0f0\"/><text x=\"20\" y=\"22\" text-anchor=\"middle\" font-size=\"10\" fill=\"%23666\">🎵</text></svg>'">
             <div class="playlist-info">
                 <div class="playlist-title">${song.title}</div>
                 <div class="playlist-artist">${song.artist}</div>
@@ -225,10 +299,8 @@ function renderPlaylist() {
         
         item.addEventListener('click', () => {
             console.log('Playlist item clicked:', index);
-            loadSong(index);
-            if (isPlaying) {
-                setTimeout(() => audio.play().catch(console.error), 300);
-            }
+            const wasPlaying = !audio.paused;
+            loadSong(index, wasPlaying);
         });
         
         playlistItems.appendChild(item);
@@ -239,7 +311,8 @@ function renderPlaylist() {
 
 // Update playlist UI
 function updatePlaylistUI() {
-    document.querySelectorAll('.playlist-item').forEach((item, index) => {
+    const items = document.querySelectorAll('.playlist-item');
+    items.forEach((item, index) => {
         item.classList.toggle('active', index === currentIndex);
     });
 }
@@ -274,21 +347,23 @@ function setupEventListeners() {
         isPlaying = false;
     });
     
-    // Error handling
+    // Error handling for audio loading
     audio.addEventListener('error', (e) => {
         console.error('Audio error:', audio.error);
         console.error('Audio src:', audio.src);
         
-        // Fallback: try next song if current fails
+        // Try next song if current fails
         if (audio.error && audio.error.code === 4) {
-            console.log('Media not found, trying next song...');
-            setTimeout(nextSong, 1000);
+            console.log('Media not found, trying next song in 2 seconds...');
+            setTimeout(() => {
+                const nextIndex = (currentIndex + 1) % songs.length;
+                loadSong(nextIndex, isPlaying);
+            }, 2000);
         }
     });
     
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-        // Don't trigger if user is typing
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         
         switch(e.key) {
@@ -318,7 +393,13 @@ function setupEventListeners() {
     document.addEventListener('click', function enableAudioOnce() {
         console.log('First click detected, enabling audio...');
         enableAudio();
-        document.removeEventListener('click', enableAudioOnce);
+    }, { once: true });
+    
+    // Also enable on touch for mobile
+    document.addEventListener('touchstart', function enableAudioOnceTouch() {
+        console.log('First touch detected, enabling audio...');
+        enableAudio();
+        document.removeEventListener('touchstart', enableAudioOnceTouch);
     }, { once: true });
     
     console.log('Event listeners setup complete');
@@ -326,7 +407,10 @@ function setupEventListeners() {
 
 // Initialize
 function init() {
-    console.log('Initializing music player...');
+    console.log('=== Initializing Music Player ===');
+    
+    // Set initial volume
+    audio.volume = 1;
     
     // Load first song
     loadSong(0);
@@ -337,34 +421,24 @@ function init() {
     // Setup event listeners
     setupEventListeners();
     
-    // Check if files exist
-    checkFiles();
+    // Test audio files
+    testAudioFiles();
     
-    console.log('Music Player initialized successfully!');
-    
-    // Show debug info
-    document.getElementById('debug').textContent = 'Player Loaded!';
-    document.getElementById('debug').style.display = 'block';
-    setTimeout(() => {
-        document.getElementById('debug').style.display = 'none';
-    }, 3000);
+    console.log('=== Music Player Ready! ===');
 }
 
-// Check if files exist
-function checkFiles() {
-    console.log('Checking files...');
-    
-    // Test each song
+// Test if audio files exist
+function testAudioFiles() {
+    console.log('Testing audio files...');
     songs.forEach((song, index) => {
-        const img = new Image();
-        img.onload = () => console.log(`✓ Cover ${index + 1}: ${song.cover} - OK`);
-        img.onerror = () => console.error(`✗ Cover ${index + 1}: ${song.cover} - NOT FOUND`);
-        img.src = song.cover;
-        
-        // Test audio (HEAD request)
         fetch(song.src, { method: 'HEAD' })
-            .then(res => console.log(`✓ Audio ${index + 1}: ${song.src} - ${res.status}`))
-            .catch(() => console.error(`✗ Audio ${index + 1}: ${song.src} - NOT FOUND`));
+            .then(res => {
+                console.log(`✓ Audio ${index + 1}: "${song.title}" - ${res.status} OK`);
+            })
+            .catch(err => {
+                console.error(`✗ Audio ${index + 1}: "${song.title}" - NOT FOUND`);
+                console.error(`  Path: ${song.src}`);
+            });
     });
 }
 
@@ -373,4 +447,16 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
-        }
+}
+
+// Log for debugging
+window.playerDebug = {
+    songs: songs,
+    currentIndex: () => currentIndex,
+    isPlaying: () => isPlaying,
+    repeatMode: () => repeatMode,
+    audioEnabled: () => audioEnabled,
+    playCurrentSong: () => playSong()
+};
+
+console.log('Player debug object available: window.playerDebug');
