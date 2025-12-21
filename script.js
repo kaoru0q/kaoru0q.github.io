@@ -25,7 +25,7 @@ const songs = [
         artist: "Hagali",
         src: "lagu/song4.mp3",
         cover: "gambar/song4.jpg"
-    }
+    },
     {
         title: "dahlah.",
         artist: "Kaela Kovalskia",
