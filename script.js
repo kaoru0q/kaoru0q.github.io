@@ -26,6 +26,18 @@ const songs = [
         src: "lagu/song4.mp3",
         cover: "gambar/song4.jpg"
     }
+    {
+        title: "dahlah.",
+        artist: "Kaela Kovalskia",
+        src: "lagu/song5.mp3",
+        cover: "gambar/song5.png"
+    },
+    {
+        title: "Jadian Yuk",
+        artist: "Chloe Pawapua",
+        src: "lagu/song6.mp3",
+        cover: "gambar/song6.jpg"
+    }
 ];
 
 // Global variables
