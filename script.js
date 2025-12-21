@@ -202,7 +202,7 @@ function prevSong() {
     console.log('prevSong called');
     
     // If more than 3 seconds played, restart current song
-    if (audio.currentTime > 3) {
+    if (audio.currentTime > 3600) {
         audio.currentTime = 0;
         return;
     }
