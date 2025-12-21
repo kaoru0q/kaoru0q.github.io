@@ -1,4 +1,6 @@
-// Music data from your folders
+console.log('Script.js loaded!'); // Debug log
+
+// Music data
 const songs = [
     {
         title: "Chinmoku no Majo",
@@ -26,10 +28,10 @@ const songs = [
     }
 ];
 
-// Player State
+// Global variables
 let currentIndex = 0;
 let isPlaying = false;
-let repeatMode = 'off'; // 'off', 'on'
+let repeatMode = 'off';
 
 // DOM Elements
 const audio = document.getElementById('audio');
@@ -47,8 +49,18 @@ const artistEl = document.getElementById('artist');
 const coverEl = document.getElementById('cover');
 const playlistItems = document.getElementById('playlist-items');
 
-// Format time (seconds to MM:SS)
+console.log('DOM Elements found:', {
+    audio: !!audio,
+    playBtn: !!playBtn,
+    prevBtn: !!prevBtn,
+    nextBtn: !!nextBtn,
+    repeatBtn: !!repeatBtn,
+    playlistItems: !!playlistItems
+});
+
+// Format time
 function formatTime(seconds) {
+    if (isNaN(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -56,11 +68,16 @@ function formatTime(seconds) {
 
 // Load song
 function loadSong(index) {
+    console.log('loadSong called with index:', index);
+    
+    // Validate index
     if (index < 0) index = songs.length - 1;
     if (index >= songs.length) index = 0;
     
     currentIndex = index;
     const song = songs[index];
+    
+    console.log('Loading song:', song.title);
     
     // Update UI
     titleEl.textContent = song.title;
@@ -69,78 +86,87 @@ function loadSong(index) {
     
     // Set audio source
     audio.src = song.src;
+    
+    // Reset progress
+    progressBar.style.width = '0%';
+    currentTimeEl.textContent = '0:00';
+    
+    // Load audio
     audio.load();
     
-    // Update active playlist item
+    // Update playlist
     updatePlaylistUI();
-    
-    console.log('Loaded:', song.title);
 }
 
-// Play/Pause
-async function togglePlay() {
-    try {
-        if (audio.paused) {
-            await audio.play();
+// Toggle play/pause
+function togglePlay() {
+    console.log('togglePlay called, audio.paused:', audio.paused);
+    
+    if (audio.paused) {
+        audio.play().then(() => {
+            console.log('Playback started');
             playBtn.innerHTML = '<i class="fas fa-pause"></i>';
             isPlaying = true;
-        } else {
-            audio.pause();
-            playBtn.innerHTML = '<i class="fas fa-play"></i>';
-            isPlaying = false;
-        }
-    } catch (error) {
-        console.log('Play error:', error);
-        // Try to enable audio on mobile
-        if (error.name === 'NotAllowedError') {
-            enableAudio();
-        }
+        }).catch(error => {
+            console.error('Play failed:', error);
+            // Try to enable audio for mobile
+            if (error.name === 'NotAllowedError') {
+                enableAudio();
+            }
+        });
+    } else {
+        audio.pause();
+        playBtn.innerHTML = '<i class="fas fa-play"></i>';
+        isPlaying = false;
     }
 }
 
 // Enable audio for mobile
 function enableAudio() {
+    console.log('Enabling audio for mobile...');
     audio.volume = 0.01;
     audio.play().then(() => {
         audio.pause();
         audio.currentTime = 0;
         audio.volume = 1;
-        console.log('Audio enabled for mobile');
-    }).catch(() => {
-        console.log('Audio enable failed');
-    });
+        console.log('Audio enabled');
+    }).catch(console.error);
 }
 
 // Next song
 function nextSong() {
+    console.log('nextSong called');
     loadSong(currentIndex + 1);
     if (isPlaying) {
-        audio.play().catch(console.error);
+        setTimeout(() => audio.play().catch(console.error), 300);
     }
 }
 
 // Previous song
 function prevSong() {
-    // If less than 3 seconds played, go to previous song
+    console.log('prevSong called');
+    
+    // If more than 3 seconds played, restart current song
     if (audio.currentTime > 3) {
         audio.currentTime = 0;
         return;
     }
+    
     loadSong(currentIndex - 1);
     if (isPlaying) {
-        audio.play().catch(console.error);
+        setTimeout(() => audio.play().catch(console.error), 300);
     }
 }
 
 // Toggle repeat
 function toggleRepeat() {
+    console.log('toggleRepeat called');
     repeatMode = repeatMode === 'off' ? 'on' : 'off';
     repeatText.textContent = `Repeat: ${repeatMode === 'on' ? 'On' : 'Off'}`;
     repeatBtn.classList.toggle('active', repeatMode === 'on');
-    console.log('Repeat:', repeatMode);
 }
 
-// Update progress bar
+// Update progress
 function updateProgress() {
     if (!audio.duration || isNaN(audio.duration)) return;
     
@@ -153,14 +179,14 @@ function updateProgress() {
 function seek(e) {
     if (!audio.duration || isNaN(audio.duration)) return;
     
-    const clickX = e.offsetX;
-    const containerWidth = this.clientWidth;
-    const percent = clickX / containerWidth;
+    const rect = this.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percent = clickX / this.clientWidth;
     
     audio.currentTime = percent * audio.duration;
 }
 
-// Update duration display
+// Update duration
 function updateDuration() {
     if (!audio.duration || isNaN(audio.duration)) return;
     durationEl.textContent = formatTime(audio.duration);
@@ -168,6 +194,8 @@ function updateDuration() {
 
 // Handle song end
 function handleSongEnd() {
+    console.log('Song ended, repeatMode:', repeatMode);
+    
     if (repeatMode === 'on') {
         // Repeat current song
         audio.currentTime = 0;
@@ -180,13 +208,15 @@ function handleSongEnd() {
 
 // Render playlist
 function renderPlaylist() {
+    console.log('Rendering playlist with', songs.length, 'songs');
+    
     playlistItems.innerHTML = '';
     
     songs.forEach((song, index) => {
         const item = document.createElement('div');
         item.className = `playlist-item ${index === currentIndex ? 'active' : ''}`;
         item.innerHTML = `
-            <img src="${song.cover}" alt="${song.title}">
+            <img src="${song.cover}" alt="${song.title}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"40\" viewBox=\"0 0 40 40\"><rect width=\"40\" height=\"40\" fill=\"%23ccc\"/><text x=\"20\" y=\"22\" text-anchor=\"middle\" font-size=\"10\" fill=\"%23666\">No Image</text></svg>'">
             <div class="playlist-info">
                 <div class="playlist-title">${song.title}</div>
                 <div class="playlist-artist">${song.artist}</div>
@@ -194,14 +224,17 @@ function renderPlaylist() {
         `;
         
         item.addEventListener('click', () => {
+            console.log('Playlist item clicked:', index);
             loadSong(index);
             if (isPlaying) {
-                audio.play().catch(console.error);
+                setTimeout(() => audio.play().catch(console.error), 300);
             }
         });
         
         playlistItems.appendChild(item);
     });
+    
+    console.log('Playlist rendered');
 }
 
 // Update playlist UI
@@ -213,6 +246,8 @@ function updatePlaylistUI() {
 
 // Setup event listeners
 function setupEventListeners() {
+    console.log('Setting up event listeners...');
+    
     // Player controls
     playBtn.addEventListener('click', togglePlay);
     prevBtn.addEventListener('click', prevSong);
@@ -226,11 +261,15 @@ function setupEventListeners() {
     audio.addEventListener('timeupdate', updateProgress);
     audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('ended', handleSongEnd);
+    
     audio.addEventListener('play', () => {
+        console.log('Audio play event');
         playBtn.innerHTML = '<i class="fas fa-pause"></i>';
         isPlaying = true;
     });
+    
     audio.addEventListener('pause', () => {
+        console.log('Audio pause event');
         playBtn.innerHTML = '<i class="fas fa-play"></i>';
         isPlaying = false;
     });
@@ -238,15 +277,20 @@ function setupEventListeners() {
     // Error handling
     audio.addEventListener('error', (e) => {
         console.error('Audio error:', audio.error);
+        console.error('Audio src:', audio.src);
+        
+        // Fallback: try next song if current fails
         if (audio.error && audio.error.code === 4) {
-            // Media not found, try next song
-            console.log('File not found, trying next song...');
+            console.log('Media not found, trying next song...');
             setTimeout(nextSong, 1000);
         }
     });
     
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
+        // Don't trigger if user is typing
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        
         switch(e.key) {
             case ' ':
                 e.preventDefault();
@@ -270,15 +314,20 @@ function setupEventListeners() {
         }
     });
     
-    // Enable audio on page load for mobile
+    // Enable audio on first click (for mobile)
     document.addEventListener('click', function enableAudioOnce() {
+        console.log('First click detected, enabling audio...');
         enableAudio();
         document.removeEventListener('click', enableAudioOnce);
     }, { once: true });
+    
+    console.log('Event listeners setup complete');
 }
 
-// Initialize player
+// Initialize
 function init() {
+    console.log('Initializing music player...');
+    
     // Load first song
     loadSong(0);
     
@@ -288,8 +337,40 @@ function init() {
     // Setup event listeners
     setupEventListeners();
     
-    console.log('Music Player Ready!');
+    // Check if files exist
+    checkFiles();
+    
+    console.log('Music Player initialized successfully!');
+    
+    // Show debug info
+    document.getElementById('debug').textContent = 'Player Loaded!';
+    document.getElementById('debug').style.display = 'block';
+    setTimeout(() => {
+        document.getElementById('debug').style.display = 'none';
+    }, 3000);
 }
 
-// Start the player when DOM is loaded
-document.addEventListener('DOMContentLoaded', init);
+// Check if files exist
+function checkFiles() {
+    console.log('Checking files...');
+    
+    // Test each song
+    songs.forEach((song, index) => {
+        const img = new Image();
+        img.onload = () => console.log(`✓ Cover ${index + 1}: ${song.cover} - OK`);
+        img.onerror = () => console.error(`✗ Cover ${index + 1}: ${song.cover} - NOT FOUND`);
+        img.src = song.cover;
+        
+        // Test audio (HEAD request)
+        fetch(song.src, { method: 'HEAD' })
+            .then(res => console.log(`✓ Audio ${index + 1}: ${song.src} - ${res.status}`))
+            .catch(() => console.error(`✗ Audio ${index + 1}: ${song.src} - NOT FOUND`));
+    });
+}
+
+// Start when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+        }
