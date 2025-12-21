@@ -51,8 +51,8 @@ const songs = [
         cover: "gambar/song8.jpg"
     },
     {
-        title: "dahlah.",
-        artist: "Kaela Kovalskia",
+        title: "月夜ノコトリ",
+        artist: "Shiratori Kotori",
         src: "lagu/song9.mp3",
         cover: "gambar/song9.jpg"
     },
