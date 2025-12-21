@@ -296,11 +296,6 @@ function renderPlaylist() {
             </div>
         `;
 
-        item.querySelector('img').onerror = function() {
-            this.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" fill="%23f5f5f5"/><text x="20" y="22" text-anchor="middle" font-size="12" fill="%23999">🎵</text></svg>';
-            this.alt = 'No cover image';
-        };
-        
         item.addEventListener('click', () => {
             console.log('Playlist item clicked:', index);
             const wasPlaying = !audio.paused;
