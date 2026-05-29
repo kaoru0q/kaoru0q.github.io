@@ -93,7 +93,7 @@ const songs = [
         cover: "gambar/song15.png"
     }
     {
-        title: "Beanie - Piano Version",
+        title: "Beanie (Piano Version)",
         artist: "Penguin Piano",
         src: "lagu/song16.mp3",
         cover: "gambar/song16.png"
